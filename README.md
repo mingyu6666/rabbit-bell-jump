@@ -38,6 +38,12 @@ rabbit-bell-jump/
 
 ## 🚀 本地运行
 
+**方式一：浏览器立即试玩（无需任何工具）**
+
+直接用浏览器打开 `preview/index.html` 即可玩（鼠标拖动控制，手机浏览器支持触摸）。游戏逻辑与微信小程序完全一致，音效用 WebAudio 实时合成，进度存于浏览器本地。
+
+**方式二：微信开发者工具运行**
+
 1. 下载并安装 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)
 2. 打开开发者工具 → 导入项目 → 选择本目录
    - AppID 可先选择「测试号」（`project.config.json` 已配置为游客模式 `touristappid`，导入时也可改用自己的 AppID）
