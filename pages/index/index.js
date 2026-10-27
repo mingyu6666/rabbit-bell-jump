@@ -13,6 +13,7 @@ const STORAGE_KEY = 'rabbit_bell_best'
 
 // 物理常量（基于秒的物理，时间戳单位为毫秒）
 const G = 1100          // 重力加速度 px/s²（调低：跳得更高、下落更缓，节奏舒适）
+const JUMP_BOOST = 1.15 // 起跳速度安全系数：抵消离散帧积分的高度损失（约 v*dt），保证跳跃顶点一定超过下一层线
 const RABBIT_R = 16     // 兔子身体半径
 const FEET_R = 16       // 兔子脚部碰撞半径（加宽水平命中容差）
 const HIT_ZONE = 20     // 铃铛命中判定容差区（层线下方像素，免疫离散帧积分误差）
@@ -272,7 +273,7 @@ Page({
   startLoop() {
     const loop = (t) => {
       if (this.destroyed) return
-      const dt = this.lastT ? Math.min(0.05, (t - this.lastT) / 1000) : 0.016
+      const dt = this.lastT ? Math.min(0.033, (t - this.lastT) / 1000) : 0.016
       this.lastT = t
       this.elapsed += dt
       this.update(dt)
@@ -396,7 +397,7 @@ Page({
       if (o.y < b.y && (!nearest || o.y > nearest.y)) nearest = o
     }
     const gap = nearest ? b.y - nearest.y : b.gapNext || this.nextGap()
-    this.rabbit.vy = -Math.sqrt(2 * G * gap)
+    this.rabbit.vy = -Math.sqrt(2 * G * gap) * JUMP_BOOST
     const gain = b.gold ? 5 : 1
     this.addScore(gain)
     this.spawnParticles(b.x, b.y, b.gold ? '#ffd54f' : '#ffe082', 12)
@@ -466,7 +467,7 @@ Page({
 
   startGame() {
     const startBell = this.bells[0]
-    this.rabbit.vy = -Math.sqrt(2 * G * (startBell.gapNext || this.nextGap()))
+    this.rabbit.vy = -Math.sqrt(2 * G * (startBell.gapNext || this.nextGap())) * JUMP_BOOST
     this.setGameState('playing')
     this.playSound('bell')
   },

@@ -139,6 +139,7 @@
 
   /* ================= 游戏核心（与小程序 index.js 同款逻辑） ================= */
   const G = 1100
+  const JUMP_BOOST = 1.15 // 起跳速度安全系数：抵消离散帧积分高度损失，保证跳跃顶点超过下一层线
   const RABBIT_R = 16
   const FEET_R = 16
   const HIT_ZONE = 20
@@ -269,7 +270,7 @@
       this.lastT = 0
       const loop = (t) => {
         if (this.destroyed) return
-        const dt = this.lastT ? Math.min(0.05, (t - this.lastT) / 1000) : 0.016
+        const dt = this.lastT ? Math.min(0.033, (t - this.lastT) / 1000) : 0.016
         this.lastT = t
         this.elapsed += dt
         this.update(dt)
@@ -353,7 +354,7 @@
         if (o.y < b.y && (!nearest || o.y > nearest.y)) nearest = o
       }
       const gap = nearest ? b.y - nearest.y : b.gapNext || this.nextGap()
-      this.rabbit.vy = -Math.sqrt(2 * G * gap)
+      this.rabbit.vy = -Math.sqrt(2 * G * gap) * JUMP_BOOST
       const gain = b.gold ? 5 : 1
       this.addScore(gain)
       this.spawnParticles(b.x, b.y, b.gold ? '#ffd54f' : '#ffe082', 12)
@@ -417,7 +418,7 @@
 
     startGame() {
       const startBell = this.bells[0]
-      this.rabbit.vy = -Math.sqrt(2 * G * (startBell.gapNext || this.nextGap()))
+      this.rabbit.vy = -Math.sqrt(2 * G * (startBell.gapNext || this.nextGap())) * JUMP_BOOST
       this.state = 'playing'
       sounds.bell()
       this.updateUI()
