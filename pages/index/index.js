@@ -12,10 +12,10 @@
 const STORAGE_KEY = 'rabbit_bell_best'
 
 // 物理常量（基于秒的物理，时间戳单位为毫秒）
-const G = 2200          // 重力加速度 px/s²
+const G = 1100          // 重力加速度 px/s²（调低：跳得更高、下落更缓，节奏舒适）
 const RABBIT_R = 16     // 兔子身体半径
-const FEET_R = 12       // 兔子脚部碰撞半径
-const HIT_ZONE = 12     // 铃铛命中判定容差区（层线下方像素，免疫离散帧积分误差）
+const FEET_R = 16       // 兔子脚部碰撞半径（加宽水平命中容差）
+const HIT_ZONE = 20     // 铃铛命中判定容差区（层线下方像素，免疫离散帧积分误差）
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v))
@@ -202,14 +202,18 @@ Page({
     const scoreNow = this.score
     const count = scoreNow >= 20 && Math.random() < 0.3 ? 2 : 1
     const margin = r + 16
-    const maxStep = this.W * 0.42
+    const maxStep = this.W * 0.4
     const created = []
 
-    let x0 = clamp(
-      this.lastLayerX + (Math.random() * 2 - 1) * maxStep,
-      margin,
-      this.W - margin
-    )
+    // 首层铃铛尽量落在兔子正上方附近，保证第一跳几乎必中（建立手感信心）
+    const isFirstLayer = this.bells.length === 1
+    let x0 = isFirstLayer
+      ? clamp(this.W / 2 + (Math.random() * 2 - 1) * 40, margin, this.W - margin)
+      : clamp(
+          this.lastLayerX + (Math.random() * 2 - 1) * maxStep,
+          margin,
+          this.W - margin
+        )
     created.push({
       x: x0, y: newY, r, scored: false, passed: false,
       hit: false, hitAt: 0, gold: Math.random() < 0.12, gapNext: 0
@@ -254,11 +258,13 @@ Page({
   },
 
   nextGap() {
-    return Math.min(160, 90 + this.score * 1.3)
+    // 层距：起点 120px，随分数缓慢拉大，封顶 230px（跳得更高更有"蹦跳感"）
+    return Math.min(230, 120 + this.score * 1.8)
   },
 
   bellRadius() {
-    return Math.max(16, 38 - this.score * 0.5)
+    // 铃铛半径：起点 44px，随分数缓慢缩小，封顶 20px
+    return Math.max(20, 44 - this.score * 0.5)
   },
 
   /* ---------- 帧循环 ---------- */
@@ -308,10 +314,10 @@ Page({
       return
     }
 
-    // 水平移动：按住屏幕时平滑跟随手指
+    // 水平移动：按住屏幕时平滑跟随手指（响应更灵敏）
     if (this.touching) {
       const prevX = this.rabbit.x
-      this.rabbit.x += (this.touchX - this.rabbit.x) * Math.min(1, 16 * dt)
+      this.rabbit.x += (this.touchX - this.rabbit.x) * Math.min(1, 20 * dt)
       this.rabbit.vx = (this.rabbit.x - prevX) / Math.max(dt, 0.001)
     } else {
       this.rabbit.vx = 0
@@ -544,6 +550,29 @@ Page({
       ctx.fill()
     }
     ctx.restore()
+
+    // 月亮（视差滚动，随上升缓慢下移）
+    const mx = W * 0.82
+    const my = H * 0.14 - this.camera * 0.12
+    const mr = Math.min(W, H) * 0.075
+    if (my > -mr * 2) {
+      const halo = ctx.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 2.2)
+      halo.addColorStop(0, 'rgba(255,240,190,0.35)')
+      halo.addColorStop(1, 'rgba(255,240,190,0)')
+      ctx.fillStyle = halo
+      ctx.beginPath()
+      ctx.arc(mx, my, mr * 2.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#fff6d8'
+      ctx.beginPath()
+      ctx.arc(mx, my, mr, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = 'rgba(240,220,180,0.6)'
+      ctx.beginPath()
+      ctx.arc(mx + mr * 0.25, my - mr * 0.2, mr * 0.18, 0, Math.PI * 2)
+      ctx.arc(mx - mr * 0.3, my + mr * 0.35, mr * 0.13, 0, Math.PI * 2)
+      ctx.fill()
+    }
   },
 
   drawClouds(ctx, t) {
@@ -634,45 +663,57 @@ Page({
         ctx.globalAlpha = alpha * (b.scored ? 0.32 : 1)
       }
 
-      // 顶部挂环
+      // 顶部系钮与挂环
+      ctx.fillStyle = '#d9a441'
+      ctx.beginPath()
+      ctx.arc(0, -b.r * 1.24, b.r * 0.13, 0, Math.PI * 2)
+      ctx.fill()
       ctx.strokeStyle = '#c9972f'
       ctx.lineWidth = 2.5
       ctx.beginPath()
-      ctx.arc(0, -b.r * 1.15, b.r * 0.22, 0, Math.PI * 2)
+      ctx.arc(0, -b.r * 1.05, b.r * 0.24, 0, Math.PI * 2)
       ctx.stroke()
 
-      // 铃身
-      const grad = ctx.createRadialGradient(-b.r * 0.3, -b.r * 0.35, b.r * 0.15, 0, 0, b.r)
+      // 铃身（亮金色渐变）
+      const grad = ctx.createRadialGradient(-b.r * 0.32, -b.r * 0.4, b.r * 0.15, 0, 0, b.r * 1.05)
       if (b.gold) {
-        grad.addColorStop(0, '#fff6d8')
-        grad.addColorStop(0.55, '#ffd54f')
-        grad.addColorStop(1, '#f5a623')
+        grad.addColorStop(0, '#fffbe6')
+        grad.addColorStop(0.5, '#ffd54f')
+        grad.addColorStop(1, '#f09a12')
       } else {
-        grad.addColorStop(0, '#fff8dd')
-        grad.addColorStop(0.55, '#ffe27a')
-        grad.addColorStop(1, '#e6a817')
+        grad.addColorStop(0, '#fff9e0')
+        grad.addColorStop(0.5, '#ffe27a')
+        grad.addColorStop(1, '#e2a413')
       }
       ctx.fillStyle = grad
       ctx.beginPath()
       ctx.arc(0, 0, b.r, 0, Math.PI * 2)
       ctx.fill()
 
-      // 底部凸起
+      // 铃口（下方半圆延伸 + 暗部开口）
       ctx.fillStyle = grad
       ctx.beginPath()
-      ctx.arc(0, b.r * 0.52, b.r * 0.55, 0, Math.PI)
+      ctx.arc(0, b.r * 0.48, b.r * 0.66, 0, Math.PI)
+      ctx.fill()
+      ctx.fillStyle = 'rgba(190,120,20,0.35)'
+      ctx.beginPath()
+      ctx.arc(0, b.r * 0.56, b.r * 0.48, 0, Math.PI)
       ctx.fill()
 
-      // 高光
-      ctx.fillStyle = 'rgba(255,255,255,0.5)'
+      // 顶部高光与亮点
+      ctx.fillStyle = 'rgba(255,255,255,0.65)'
       ctx.beginPath()
-      ctx.ellipse(-b.r * 0.35, -b.r * 0.4, b.r * 0.28, b.r * 0.18, -0.6, 0, Math.PI * 2)
+      ctx.ellipse(-b.r * 0.34, -b.r * 0.42, b.r * 0.3, b.r * 0.16, -0.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = 'rgba(255,255,255,0.35)'
+      ctx.beginPath()
+      ctx.arc(-b.r * 0.05, -b.r * 0.52, b.r * 0.08, 0, Math.PI * 2)
       ctx.fill()
 
-      // 阴影
-      ctx.fillStyle = 'rgba(0,0,0,0.15)'
+      // 底部阴影
+      ctx.fillStyle = 'rgba(0,0,0,0.14)'
       ctx.beginPath()
-      ctx.ellipse(0, b.r * 0.75, b.r * 0.8, b.r * 0.22, 0, 0, Math.PI * 2)
+      ctx.ellipse(0, b.r * 0.82, b.r * 0.78, b.r * 0.2, 0, 0, Math.PI * 2)
       ctx.fill()
 
       ctx.restore()
@@ -691,78 +732,111 @@ Page({
     ctx.translate(x, y)
     ctx.rotate(tilt)
 
-    // 尾巴
-    ctx.fillStyle = '#ffffff'
+    // 脚下柔和阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'
     ctx.beginPath()
-    ctx.arc(r * 0.72, r * 0.5, r * 0.26, 0, Math.PI * 2)
+    ctx.ellipse(0, r * 1.12, r * 0.85, r * 0.2, 0, 0, Math.PI * 2)
     ctx.fill()
 
-    // 耳朵
-    const earSwing = Math.sin(t * 4) * 0.08
-    this.drawEar(ctx, -r * 0.38, -r * 0.55, -0.22 + earSwing)
-    this.drawEar(ctx, r * 0.38, -r * 0.55, 0.22 - earSwing)
+    // 尾巴
+    ctx.fillStyle = '#f6f6f6'
+    ctx.beginPath()
+    ctx.arc(r * 0.8, r * 0.6, r * 0.3, 0, Math.PI * 2)
+    ctx.fill()
 
-    // 身体
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeStyle = 'rgba(0,0,0,0.06)'
-    ctx.lineWidth = 1
+    // 耳朵（弹簧摆动）
+    const earSwing = Math.sin(t * 5) * 0.1
+    this.drawEar(ctx, -r * 0.42, -r * 0.6, -0.3 + earSwing, r)
+    this.drawEar(ctx, r * 0.42, -r * 0.6, 0.3 - earSwing, r)
+
+    // 小短手
+    ctx.fillStyle = '#fdf3ea'
+    ctx.beginPath()
+    ctx.ellipse(-r * 0.95, r * 0.22, r * 0.22, r * 0.3, 0.5, 0, Math.PI * 2)
+    ctx.ellipse(r * 0.95, r * 0.22, r * 0.22, r * 0.3, -0.5, 0, Math.PI * 2)
+    ctx.fill()
+
+    // 身体（米白渐变，圆鼓鼓）
+    const bodyGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.2, 0, 0, r * 1.1)
+    bodyGrad.addColorStop(0, '#ffffff')
+    bodyGrad.addColorStop(0.7, '#fdf6ec')
+    bodyGrad.addColorStop(1, '#f6e7d3')
+    ctx.fillStyle = bodyGrad
     ctx.beginPath()
     ctx.ellipse(0, 0, r, r * 1.08, 0, 0, Math.PI * 2)
     ctx.fill()
+    ctx.strokeStyle = 'rgba(214,178,135,0.25)'
+    ctx.lineWidth = 1
     ctx.stroke()
 
+    // 肚子
+    ctx.fillStyle = 'rgba(255,255,255,0.65)'
+    ctx.beginPath()
+    ctx.ellipse(0, r * 0.35, r * 0.55, r * 0.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+
     // 腮红
-    ctx.fillStyle = 'rgba(255,138,128,0.4)'
+    ctx.fillStyle = 'rgba(255,150,140,0.5)'
     ctx.beginPath()
-    ctx.ellipse(-r * 0.62, r * 0.18, r * 0.2, r * 0.13, 0, 0, Math.PI * 2)
-    ctx.ellipse(r * 0.62, r * 0.18, r * 0.2, r * 0.13, 0, 0, Math.PI * 2)
+    ctx.ellipse(-r * 0.62, r * 0.18, r * 0.24, r * 0.15, 0, 0, Math.PI * 2)
+    ctx.ellipse(r * 0.62, r * 0.18, r * 0.24, r * 0.15, 0, 0, Math.PI * 2)
     ctx.fill()
 
-    // 眼睛
-    ctx.fillStyle = '#3a3a3a'
+    // 眼睛（大而 Q，深棕，双高光）
+    ctx.fillStyle = '#4a2f2a'
     ctx.beginPath()
-    ctx.arc(-r * 0.32, -r * 0.2, r * 0.14, 0, Math.PI * 2)
-    ctx.arc(r * 0.32, -r * 0.2, r * 0.14, 0, Math.PI * 2)
+    ctx.arc(-r * 0.34, -r * 0.22, r * 0.19, 0, Math.PI * 2)
+    ctx.arc(r * 0.34, -r * 0.22, r * 0.19, 0, Math.PI * 2)
     ctx.fill()
-
-    // 眼睛高光
     ctx.fillStyle = '#ffffff'
     ctx.beginPath()
-    ctx.arc(-r * 0.27, -r * 0.26, r * 0.05, 0, Math.PI * 2)
-    ctx.arc(r * 0.37, -r * 0.26, r * 0.05, 0, Math.PI * 2)
+    ctx.arc(-r * 0.29, -r * 0.28, r * 0.07, 0, Math.PI * 2)
+    ctx.arc(r * 0.39, -r * 0.28, r * 0.07, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'
+    ctx.beginPath()
+    ctx.arc(-r * 0.4, -r * 0.16, r * 0.035, 0, Math.PI * 2)
+    ctx.arc(r * 0.28, -r * 0.16, r * 0.035, 0, Math.PI * 2)
     ctx.fill()
 
     // 鼻子和嘴
     ctx.fillStyle = '#ff8a80'
     ctx.beginPath()
-    ctx.arc(0, r * 0.02, r * 0.1, 0, Math.PI * 2)
+    ctx.moveTo(0, -r * 0.06)
+    ctx.quadraticCurveTo(r * 0.08, r * 0.04, 0, r * 0.1)
+    ctx.quadraticCurveTo(-r * 0.08, r * 0.04, 0, -r * 0.06)
     ctx.fill()
-    ctx.strokeStyle = '#e0a0a0'
+    ctx.strokeStyle = 'rgba(224,160,160,0.8)'
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(0, r * 0.12)
-    ctx.lineTo(-r * 0.18, r * 0.32)
+    ctx.quadraticCurveTo(-r * 0.1, r * 0.24, -r * 0.2, r * 0.3)
     ctx.moveTo(0, r * 0.12)
-    ctx.lineTo(r * 0.18, r * 0.32)
+    ctx.quadraticCurveTo(r * 0.1, r * 0.24, r * 0.2, r * 0.3)
     ctx.stroke()
 
     ctx.restore()
   },
 
-  drawEar(ctx, x, y, angle) {
+  drawEar(ctx, x, y, angle, r) {
     ctx.save()
     ctx.translate(x, y)
     ctx.rotate(angle)
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeStyle = 'rgba(0,0,0,0.06)'
-    ctx.lineWidth = 1
+    // 耳外侧（米白）
+    const earGrad = ctx.createLinearGradient(0, -r * 0.7, 0, r * 0.3)
+    earGrad.addColorStop(0, '#fffaf2')
+    earGrad.addColorStop(1, '#fdece0')
+    ctx.fillStyle = earGrad
     ctx.beginPath()
-    ctx.ellipse(0, -9, 4.5, 9, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, -r * 0.42, r * 0.26, r * 0.62, 0, 0, Math.PI * 2)
     ctx.fill()
-    ctx.stroke()
-    ctx.fillStyle = '#ffb4b4'
+    // 耳内侧（粉渐变）
+    const innerGrad = ctx.createLinearGradient(0, -r * 0.55, 0, r * 0.1)
+    innerGrad.addColorStop(0, '#ffc9c9')
+    innerGrad.addColorStop(1, '#ff9e9e')
+    ctx.fillStyle = innerGrad
     ctx.beginPath()
-    ctx.ellipse(0, -8, 2.2, 5.5, 0, 0, Math.PI * 2)
+    ctx.ellipse(0, -r * 0.4, r * 0.13, r * 0.38, 0, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   },
@@ -784,9 +858,20 @@ Page({
     const H = this.H
     // 雪地：固定屏幕底部，营造稳定平台感
     const gy = H - 46
+    // 远景雪丘（浅蓝白，半透明）
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.beginPath()
+    ctx.moveTo(0, gy + 14)
+    ctx.quadraticCurveTo(W * 0.25, gy - 26, W * 0.5, gy - 8)
+    ctx.quadraticCurveTo(W * 0.78, gy + 8, W, gy - 12)
+    ctx.lineTo(W, H)
+    ctx.lineTo(0, H)
+    ctx.closePath()
+    ctx.fill()
+    // 近景雪地（暖白渐变）
     const grad = ctx.createLinearGradient(0, gy - 30, 0, H)
-    grad.addColorStop(0, 'rgba(255,255,255,0.95)')
-    grad.addColorStop(1, 'rgba(226,232,240,1)')
+    grad.addColorStop(0, 'rgba(255,255,255,0.98)')
+    grad.addColorStop(1, 'rgba(224,232,244,1)')
     ctx.fillStyle = grad
     ctx.beginPath()
     ctx.moveTo(0, gy)
