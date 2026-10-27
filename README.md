@@ -29,10 +29,13 @@ rabbit-bell-jump/
 │       ├── index.wxml               # 页面结构与 HUD/遮罩
 │       ├── index.wxss               # 页面样式
 │       └── index.json
+├── preview/
+│   └── index.html                   # 浏览器试玩版（同款游戏逻辑，双击即玩）
 ├── assets/
 │   └── sounds/                      # 程序化音效（bell/star/fail.wav）
 ├── tools/
-│   └── gen_sounds.py                # 音效生成脚本（python 标准库，可复现）
+│   ├── gen_sounds.py                # 音效生成脚本（python 标准库，可复现）
+│   └── smoke-test.js                # 游戏逻辑冒烟测试（Node 环境）
 └── README.md
 ```
 
