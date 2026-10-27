@@ -1,0 +1,15 @@
+{
+  "description": "小兔跳铃铛 - 微信小程序版（复刻经典休闲跳跃游戏）",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "rabbit-bell-jump",
+  "libVersion": "3.4.10",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "ignoreUploadUnusedFiles": true
+  },
+  "condition": {}
+}

@@ -1,0 +1,10 @@
+# 依赖 / 构建产物
+node_modules/
+miniprogram_npm/
+
+# 微信开发者工具生成
+.DS_Store
+*.log
+
+# 本地临时文件
+*.tmp

@@ -1,0 +1,34 @@
+<view class="game-wrap">
+  <canvas
+    type="2d"
+    id="gameCanvas"
+    class="game-canvas"
+    bindtouchstart="onTouchStart"
+    bindtouchmove="onTouchMove"
+    bindtouchend="onTouchEnd"
+    bindtouchcancel="onTouchEnd"
+  ></canvas>
+
+  <!-- 顶部 HUD -->
+  <view class="hud" wx:if="{{state == 'playing' || state == 'ready'}}">
+    <view class="score">{{score}}</view>
+    <view class="best">最高 {{best}}</view>
+  </view>
+
+  <!-- 开始遮罩 -->
+  <view class="overlay" wx:if="{{state == 'ready'}}" bindtap="onOverlayTap">
+    <view class="title">小兔跳铃铛</view>
+    <view class="subtitle">按住屏幕拖动控制小兔左右移动</view>
+    <view class="subtitle">踩中铃铛继续上升，踩空就会摔落</view>
+    <view class="btn">点击开始</view>
+    <view class="best-tip" wx:if="{{best > 0}}">历史最高 {{best}} 分</view>
+  </view>
+
+  <!-- 结束遮罩 -->
+  <view class="overlay" wx:if="{{state == 'gameover'}}" bindtap="onOverlayTap">
+    <view class="title over">游戏结束</view>
+    <view class="final-score">得分 {{score}}</view>
+    <view class="best-tip">历史最高 {{best}} 分</view>
+    <view class="btn">再来一局</view>
+  </view>
+</view>
